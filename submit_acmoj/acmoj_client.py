@@ -40,33 +40,35 @@ class ACMOJClient:
         self.submission_log_file = '/workspace/submission_ids.log'
         
 
-    def _make_request(self, method: str, endpoint: str, data: Dict[str, Any] = None, 
+    def _make_request(self, method: str, endpoint: str, data: Dict[str, Any] = None,
                      params: Dict[str, Any] = None) -> Optional[Dict]:
         url = f"{self.api_base}{endpoint}"
-        try:
-            if method.upper() == "GET":
-                response = requests.get(url, headers=self.headers, params=params, timeout=10)
-            elif method.upper() == "POST":
-                response = requests.post(url, headers=self.headers, data=data, timeout=10)
-            else:
-                print(f"Unsupported HTTP method: {method}")
-                return None
+        for attempt in range(3):
+            try:
+                if method.upper() == "GET":
+                    response = requests.get(url, headers=self.headers, params=params, timeout=30)
+                elif method.upper() == "POST":
+                    response = requests.post(url, headers=self.headers, data=data, timeout=30)
+                else:
+                    print(f"Unsupported HTTP method: {method}")
+                    return None
 
-            if response.status_code == 204:
-                return {"status": "success", "message": "Operation successful"}
+                if response.status_code == 204:
+                    return {"status": "success", "message": "Operation successful"}
 
-            response.raise_for_status()
-            
-            if response.content:
-                return response.json()
-            else:
-                return {"status": "success"}
+                response.raise_for_status()
 
-        except requests.exceptions.RequestException as e:
-            print(f"API Request failed: {e}")
-            if 'response' in locals() and response:
-                print(f"Response text: {response.text}")
-            return None
+                if response.content:
+                    return response.json()
+                else:
+                    return {"status": "success"}
+
+            except requests.exceptions.RequestException as e:
+                print(f"API Request failed (attempt {attempt+1}/3): {e}")
+                if 'response' in locals() and response:
+                    print(f"Response text: {response.text}")
+                time.sleep(2)
+        return None
 
     def _save_submission_id(self, submission_id):
         try:
